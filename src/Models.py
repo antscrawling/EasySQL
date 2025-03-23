@@ -42,6 +42,38 @@ def load_file(file_path: str, dtype: str) -> object:
 
 
 
+#def save_file(file_path: str, data: object, dtype: str) -> None:
+#    """
+#    Save data to a file.
+#    :param file_path: The path to the file.
+#    :param data: The data to save.
+#    :param dtype: The type of the file.
+#    """
+#    data_dir = os.path.join(os.path.dirname(__file__), 'datafiles')
+#    file_path = os.path.join(data_dir, file_path)
+#
+#    match dtype:
+#        case 'json':
+#            with open(file_path, 'w') as file:
+#                json.dump(data, file, indent=4)
+#        case 'csv':
+#            data.to_csv(file_path, index=False)
+#        case 'text':
+#            with open(file_path, 'w') as file:
+#                file.write(data)
+#        case 'xlsx':
+#            data.to_excel(file_path, index=False)
+#        case 'db':
+#            with sqlite3.connect(file_path) as conn:
+#                cursor = conn.cursor()
+#                for table_name, table_data in data.items():
+#                    cursor.execute(table_data['create_sql'])
+#                    columns = [col['name'] for col in table_data['columns']]
+#                    insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({', '.join(['?' for _ in columns])})"
+#                    cursor.executemany(insert_sql, table_data['data'])
+#                conn.commit()
+#        case 'pickle':
+#            data.to_pickle(file_path)
 def save_file(file_path: str, data: object, dtype: str) -> None:
     """
     Save data to a file.
@@ -49,9 +81,10 @@ def save_file(file_path: str, data: object, dtype: str) -> None:
     :param data: The data to save.
     :param dtype: The type of the file.
     """
+   
     data_dir = os.path.join(os.path.dirname(__file__), 'datafiles')
     file_path = os.path.join(data_dir, file_path)
-
+    
     match dtype:
         case 'json':
             with open(file_path, 'w') as file:
@@ -64,39 +97,9 @@ def save_file(file_path: str, data: object, dtype: str) -> None:
         case 'xlsx':
             data.to_excel(file_path, index=False)
         case 'db':
-            with sqlite3.connect(file_path) as conn:
-                cursor = conn.cursor()
-                for table_name, table_data in data.items():
-                    cursor.execute(table_data['create_sql'])
-                    columns = [col['name'] for col in table_data['columns']]
-                    insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({', '.join(['?' for _ in columns])})"
-                    cursor.executemany(insert_sql, table_data['data'])
-                conn.commit()
+            data.to_sql(file_path, if_exists='replace')
         case 'pickle':
             data.to_pickle(file_path)
-def xsave_file(file_path: str, data: object, dtype: str) -> None:
-    """
-    Save data to a file.
-    :param file_path: The path to the file.
-    :param data: The data to save.
-    :param dtype: The type of the file.
-    """
-    full_path = os.path.join(BASE_DATA_DIR, file_path)
-    match dtype:
-        case 'json':
-            with open(full_path, 'w') as file:
-                json.dump(data, file, indent=4)
-        case 'csv':
-            data.to_csv(full_path, index=False)
-        case 'text':
-            with open(full_path, 'w') as file:
-                file.write(data)
-        case 'xlsx':
-            data.to_excel(full_path, index=False)
-        case 'db':
-            data.to_sql(full_path, if_exists='replace')
-        case 'pickle':
-            data.to_pickle(full_path)
 
 def clean_file_name(file_name: str) -> str:
     """

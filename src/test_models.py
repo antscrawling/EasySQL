@@ -35,12 +35,24 @@ class TestModels(unittest.TestCase):
         conn.execute('INSERT INTO test (name) VALUES ("Alice")')
         conn.commit()
         conn.close()
+        
+        self.addCleanup(self.cleanup_test_files)
+        
+    def cleanup_test_files(self):
+        """Helper method to clean up test files"""
+        test_files = [
+            self.csv_file_path,
+            self.json_file_path,
+            self.db_file_path
+        ]
+        for file_path in test_files:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        if os.path.exists(self.data_dir) and not os.listdir(self.data_dir):
+            os.rmdir(self.data_dir)
 
     def tearDown(self):
-        # Cleanup code to remove test files from the datafiles directory
-        os.remove(self.csv_file_path)
-        os.remove(self.json_file_path)
-        os.remove(self.db_file_path)
+        self.cleanup_test_files()
 
     def test_load_file_csv(self):
         df = load_file('test.csv', 'csv')
@@ -88,11 +100,14 @@ class TestModels(unittest.TestCase):
 
     def test_create_sql_from_pandas(self):
         df = pd.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
-        df.attrs['name'] = 'test.csv'
+        df.attrs['name'] = os.path.join(self.data_dir, 'test.csv')
         file_name, table_name, columns_sql = create_sql_from_pandas(df)
         self.assertTrue(os.path.exists(file_name))
         self.assertEqual(table_name, 'test')
         self.assertIn('col1 TEXT', columns_sql)
+        # Clean up the created database file
+        if os.path.exists(file_name):
+            os.remove(file_name)
 
     def test_list_columns(self):
         columns = list_columns(self.db_file_path, 'test')
