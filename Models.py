@@ -182,8 +182,13 @@ def create_sql_from_pandas(df: pd.DataFrame) -> tuple:
     table_name, _ = os.path.splitext(os.path.basename(file_name))
     table_name = re.sub(r'\W|^(?=\d)', '_', table_name)  # Replace invalid characters with underscores
 
+    # Sanitize the column names
+    df.columns = [re.sub(r'\W|^(?=\d)', '_', col) for col in df.columns]
+
     with sqlite3.connect(file_name) as conn:
         cursor = conn.cursor()
+        # Drop the table if it already exists
+        cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
         # Convert df to SQL
         schema = {col: 'TEXT' for col in df.columns}
         columns_sql = ',\n  '.join([f"{col} {dtype}" for col, dtype in schema.items()])
