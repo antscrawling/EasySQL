@@ -13,21 +13,23 @@ from Models import (
 class TestModels(unittest.TestCase):
 
     def setUp(self):
-        # Setup code to create test files in the root directory
+        # Setup code to create test files in the datafiles directory
         self.base_dir = os.path.dirname(__file__)
+        self.data_dir = os.path.join(self.base_dir, 'datafiles')
+        os.makedirs(self.data_dir, exist_ok=True)
         
         # Create a sample CSV file
-        self.csv_file_path = os.path.join(self.base_dir, 'test.csv')
+        self.csv_file_path = os.path.join(self.data_dir, 'test.csv')
         df = pd.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
         df.to_csv(self.csv_file_path, index=False)
         
         # Create a sample JSON file
-        self.json_file_path = os.path.join(self.base_dir, 'test.json')
+        self.json_file_path = os.path.join(self.data_dir, 'test.json')
         with open(self.json_file_path, 'w') as f:
             json.dump([{'col1': 1, 'col2': 3}, {'col1': 2, 'col2': 4}], f)
         
         # Create a sample SQLite database
-        self.db_file_path = os.path.join(self.base_dir, 'test.db')
+        self.db_file_path = os.path.join(self.data_dir, 'test.db')
         conn = sqlite3.connect(self.db_file_path)
         conn.execute('CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY, name TEXT)')
         conn.execute('INSERT INTO test (name) VALUES ("Alice")')
@@ -35,24 +37,24 @@ class TestModels(unittest.TestCase):
         conn.close()
 
     def tearDown(self):
-        # Cleanup code to remove test files from the root directory
+        # Cleanup code to remove test files from the datafiles directory
         os.remove(self.csv_file_path)
         os.remove(self.json_file_path)
         os.remove(self.db_file_path)
 
     def test_load_file_csv(self):
-        df = load_file(self.csv_file_path, 'csv')
+        df = load_file('test.csv', 'csv')
         self.assertIsInstance(df, pd.DataFrame)
         self.assertEqual(df.shape, (2, 2))
 
     def test_load_file_json(self):
-        data = load_file(self.json_file_path, 'json')
+        data = load_file('test.json', 'json')
         self.assertIsInstance(data, list)
         self.assertEqual(data[0]['col1'], 1)
 
     def test_save_file_csv(self):
         df = pd.DataFrame({'col1': [5, 6], 'col2': [7, 8]})
-        save_file(self.csv_file_path, df, 'csv')
+        save_file('test.csv', df, 'csv')
         df_loaded = pd.read_csv(self.csv_file_path)
         self.assertTrue(df.equals(df_loaded))
 
@@ -98,7 +100,7 @@ class TestModels(unittest.TestCase):
 
     def test_read_excel(self):
         # Create a sample Excel file
-        excel_file_path = os.path.join(self.base_dir, 'test.xlsx')
+        excel_file_path = os.path.join(self.data_dir, 'test.xlsx')
         df = pd.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
         df.to_excel(excel_file_path, index=False)
         df_loaded = read_excel(excel_file_path)

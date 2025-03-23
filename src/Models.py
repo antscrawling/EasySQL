@@ -7,6 +7,10 @@ from collections import ChainMap
 from pprint import pprint
 from pydantic import BaseModel
 
+
+# Define the base directory for data files
+BASE_DATA_DIR = os.path.join(os.path.dirname(__file__), 'datafiles')
+
 class EasySQL:
     def __init__(self):
         pass
@@ -18,23 +22,23 @@ def load_file(file_path: str, dtype: str) -> object:
     :param dtype: The type of the file.
     :return: The loaded data.
     """
+    full_path = os.path.join(BASE_DATA_DIR, file_path)
     match dtype:
         case 'json':
-            with open(file_path, 'r') as file:
+            with open(full_path, 'r') as file:
                 return json.load(file)
         case 'csv':
-            return read_csv(file_path)
+            return read_csv(full_path)
         case 'text':
-            with open(file_path, 'r') as file:
+            with open(full_path, 'r') as file:
                 return file.read()
         case 'xlsx':
-            return pd.read_excel(file_path).to_dict()
+            return pd.read_excel(full_path).to_dict()
         case 'db':
-            table_name = list_tables(file_path)
-            pd.DataFrame()
-            return pd.read_sql(f"SELECT * FROM {table_name[0]}", sqlite3.connect(file_path))
+            table_name = list_tables(full_path)
+            return pd.read_sql(f"SELECT * FROM {table_name[0]}", sqlite3.connect(full_path))
         case 'pickle':
-            return pd.read_pickle(file_path)
+            return pd.read_pickle(full_path)
 
 def save_file(file_path: str, data: object, dtype: str) -> None:
     """
@@ -43,23 +47,22 @@ def save_file(file_path: str, data: object, dtype: str) -> None:
     :param data: The data to save.
     :param dtype: The type of the file.
     """
-   
+    full_path = os.path.join(BASE_DATA_DIR, file_path)
     match dtype:
         case 'json':
-            with open(file_path, 'w') as file:
+            with open(full_path, 'w') as file:
                 json.dump(data, file, indent=4)
         case 'csv':
-            data.to_csv(file_path, index=False)
+            data.to_csv(full_path, index=False)
         case 'text':
-            with open(file_path, 'w') as file:
+            with open(full_path, 'w') as file:
                 file.write(data)
         case 'xlsx':
-            data.to_excel(file_path, index=False)
+            data.to_excel(full_path, index=False)
         case 'db':
-            data.to_sql(file_path, if_exists='replace')
-           
+            data.to_sql(full_path, if_exists='replace')
         case 'pickle':
-            data.to_pickle(file_path)
+            data.to_pickle(full_path)
 
 def clean_file_name(file_name: str) -> str:
     """
@@ -67,9 +70,8 @@ def clean_file_name(file_name: str) -> str:
     :param file_name: The file name to clean.
     :return: The cleaned file name.
     """
-    name, _  = file_name.split('.')
-    return name 
-
+    name, _ = file_name.split('.')
+    return name
 
 def determine_file_type(*args) -> tuple[object, str]:
     """
@@ -120,7 +122,7 @@ def read_csv(file_path: str) -> pd.DataFrame:
     """
     df = pd.read_csv(file_path, header=0)
     df.attrs['name'] = f'{file_path}'
-    #fix the first column names with spaces
+    # Fix the first column names with spaces
     df.columns = df.columns.str.replace(' ', '_')
     return df
 
@@ -166,7 +168,9 @@ def inquire_database(database_file: str, columns: str, table_name: str, *args) -
             query = f"SELECT {columns} FROM {table_name} WHERE {xwhere}"
         print(query)
         cursor.execute(query)
-        return cursor.fetchall()
+        results = cursor.fetchall()
+        cursor.close()
+        return results
 
 def create_sql_from_pandas(df: pd.DataFrame) -> tuple:
     """
@@ -291,10 +295,6 @@ def main():
     mydf,_ = determine_file_type(source_file)
     pprint(mydf)
     save_file(dest_file, mydf, 'csv')
-    
-
-
-  
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,0 @@
-retail store code,retail name,street number,street name,unit number,building name,city,state,country,manager name,employees list
-RSC001,Store1,405,Main St,U9,Bldg2,Los Angeles,NY,USA,Manager1,"E175, E189, E155"
-RSC002,Store2,618,Elm St,U6,Bldg1,Chicago,CA,USA,Manager2,"E118, E145, E150, E155, E125, E184"
-RSC003,Store3,721,Maple Ave,U6,Bldg2,Los Angeles,TX,USA,Manager3,"E104, E182, E161, E144, E151, E122"
-RSC004,Store4,739,Broadway,U5,Bldg2,Phoenix,TX,USA,Manager4,"E192, E146, E139, E121, E177, E140"
-RSC005,Store5,326,Broadway,U3,Bldg5,Phoenix,AZ,USA,Manager5,"E120, E159, E146, E159, E190, E143"
