@@ -1,4 +1,4 @@
-from importlib.resources import files
+import os
 import pandas as pd
 import sqlite3
 import json
@@ -7,13 +7,10 @@ from collections import ChainMap
 from pprint import pprint
 from pydantic import BaseModel
 
-
 class EasySQL:
     def __init__(self):
-        pass    
-    
-    
-    
+        pass
+
 def load_file(file_path: str, dtype: str) -> object:
     """
     Load a file into a dictionary or DataFrame.
@@ -33,7 +30,9 @@ def load_file(file_path: str, dtype: str) -> object:
         case 'xlsx':
             return pd.read_excel(file_path).to_dict()
         case 'db':
-            return inquire_database(file_path, '*')
+            table_name = list_tables(file_path)
+            pd.DataFrame()
+            return pd.read_sql(f"SELECT * FROM {table_name[0]}", sqlite3.connect(file_path))
         case 'pickle':
             return pd.read_pickle(file_path)
 
@@ -44,6 +43,7 @@ def save_file(file_path: str, data: object, dtype: str) -> None:
     :param data: The data to save.
     :param dtype: The type of the file.
     """
+   
     match dtype:
         case 'json':
             with open(file_path, 'w') as file:
@@ -56,9 +56,20 @@ def save_file(file_path: str, data: object, dtype: str) -> None:
         case 'xlsx':
             data.to_excel(file_path, index=False)
         case 'db':
-            pass
+            data.to_sql(file_path, if_exists='replace')
+           
         case 'pickle':
             data.to_pickle(file_path)
+
+def clean_file_name(file_name: str) -> str:
+    """
+    Clean the file name by removing invalid characters.
+    :param file_name: The file name to clean.
+    :return: The cleaned file name.
+    """
+    name, _  = file_name.split('.')
+    return name 
+
 
 def determine_file_type(*args) -> tuple[object, str]:
     """
@@ -109,6 +120,8 @@ def read_csv(file_path: str) -> pd.DataFrame:
     """
     df = pd.read_csv(file_path, header=0)
     df.attrs['name'] = f'{file_path}'
+    #fix the first column names with spaces
+    df.columns = df.columns.str.replace(' ', '_')
     return df
 
 def read_json(file_path: str) -> pd.DataFrame:
@@ -161,31 +174,27 @@ def create_sql_from_pandas(df: pd.DataFrame) -> tuple:
     :param df: The DataFrame to import.
     :return: The file name, table name, and columns SQL.
     """
+    df.create_sql_from_pandas = True
     file_name = df.attrs['name']
     file_name = [file_name.replace(ext, '.db') for ext in ['.csv', '.txt', '.xlsx'] if ext in file_name][-1]
+    
+    # Sanitize the table name
+    table_name, _ = os.path.splitext(os.path.basename(file_name))
+    table_name = re.sub(r'\W|^(?=\d)', '_', table_name)  # Replace invalid characters with underscores
 
     with sqlite3.connect(file_name) as conn:
         cursor = conn.cursor()
-        table_name, _ = file_name.split('.')
         # Convert df to SQL
         schema = {col: 'TEXT' for col in df.columns}
         columns_sql = ',\n  '.join([f"{col} {dtype}" for col, dtype in schema.items()])
-        create_table_sql = f"""
-        CREATE TABLE IF NOT EXISTS {table_name} (
-        {columns_sql}
-        );
-        """
-        insert_records_sql = f"""
-        INSERT INTO {table_name} ({', '.join(schema.keys())})
-        VALUES ({', '.join(['?' for _ in schema])});
-        """
+        create_table_sql = f"CREATE TABLE IF NOT EXISTS {table_name} ( {columns_sql} )"
+        insert_records_sql = f"INSERT INTO {table_name} ({', '.join(schema.keys())}) VALUES ({', '.join(['?' for _ in schema])})"
         # Execute the table creation
         cursor.execute(create_table_sql)
         # Execute the records insertion
         cursor.executemany(insert_records_sql, df.values.tolist())
         conn.commit()
-
-        print(f"Table '{{table_name}}' created successfully in {file_name}")
+    
     return file_name, table_name, columns_sql
 
 def list_columns(database_file: str, table_name: str) -> list[str]:
@@ -212,23 +221,13 @@ def read_excel(file_path: str) -> pd.DataFrame:
     return df
 
 def merge_list_to_dict(keylist: list[str], valuelist: list[str]) -> dict:
-    return  dict(zip(keylist, valuelist))
+    return dict(zip(keylist, valuelist))
 
 def get_the_sql_db_schema(database_file: str) -> dict:
     """
     Get the details of the SQLite database.
     :param database_file: The path to the SQLite database file.
     :return: The details of the SQLite database.
-    """
-    
-    """
-    Connects to a SQLite database and extracts its schema as a dictionary.
-    
-    Args:
-        database_file (str): Path to the SQLite .db file.
-
-    Returns:
-        dict: Schema representation with tables, columns, and types.
     """
     schema = {}
     
@@ -277,17 +276,20 @@ def get_table_names_and_column_names(database_file: str) -> dict:
 
     table_names = list_tables(database_file)
     for table in table_names:
-        column_names.append( list_columns(database_file=database_file, table_name=table) )
+        column_names.append(list_columns(database_file=database_file, table_name=table))
 
-    return  merge_list_to_dict(table_names, column_names)
-
+    return merge_list_to_dict(table_names, column_names)
 
 def main():
- 
-    database_file = 'datafiles/finance_tracker.db'
-    mydbschema = get_the_sql_db_schema(database_file)
-    #mydbschema = get_table_names_and_column_names(database_file)
-    save_file(file_path=database_file,data=mydbschema,dtype='json')
+    source_file  = 'transactions.db'
+    dest_file = 'mytransactions.csv'
+    mydf,_ = determine_file_type(source_file)
+    pprint(mydf)
+    save_file(dest_file, mydf, 'csv')
+    
+
+
+  
 
 if __name__ == "__main__":
     main()

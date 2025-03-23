@@ -1,4 +1,4 @@
-invoice number,sales date,product code,unit cost,quantity,currency,amount,store number,employee number
+invoice_number,sales_date,product_code,unit_cost,quantity,currency,amount,store_number,employee_number
 INV1000,2025-03-21,P427,14.57,4,USD,58.28,S2,E174
 INV1001,2025-03-08,P155,7.94,10,USD,79.4,S1,E177
 INV1002,2025-03-13,P558,35.78,1,USD,35.78,S4,E190
