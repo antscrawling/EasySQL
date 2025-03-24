@@ -275,47 +275,73 @@ class MyDateTime:
         except ValueError:
             return None
 
-    def check_date(self, date_str:str) -> dict:
-        """Checks if a date is valid and returns the corrected date."""
-           
-        date_str = re.sub(r"[-/,|;:.'\']", " ", date_str)
-        parts = date_str.split()
-        print(f'Date String: {date_str}')                          
-        try:
-            return self.parse_date(date_str).strftime("%d-%B-%Y")
-        except:
-           #date_str = self.convert_string(date_str)
-           print(f'Converted Date String: {date_str}')
-           date_str= self.determine_day_and_year(date_str)
+    def check_date(self, date_str: str) -> str:
+        """
+        Checks if a date is valid and returns the corrected date.
+        
+        Args:
+            date_str (str): The date string to check
             
-        #date_str = re.sub(r"[-/,]", " ", date_str)
-        parts = date_str.split()
-        print(f'Parts: {parts}')
-        myiter = iter(parts)
-        first = self.determine_length(date_str)
-        if first == 'year':
-            year = next(myiter)
-            month = next(myiter)
-            test1, var1 = self.detect_month(month)
-            n_month = var1
-            day = next(myiter)
-            n_day, n_month, n_year = self.detect_day(day, n_month, year)
-        elif first == 'day':
-            day = next(myiter)
-            month = next(myiter)
-            test2, var2 = self.detect_month(month)
-            n_month = var2
-            year = next(myiter)
-            n_day, n_month, n_year = self.detect_day(day, n_month, year)
-        elif first == 'month':
-            month = next(myiter)
-            test3, var3 = self.detect_month(month)
-            n_month = var3
-            day = next(myiter)
-            year = next(myiter)
-            n_day, n_month, n_year = self.detect_day(day, n_month, year)
-
-        return datetime(n_year, n_month, n_day).strftime("%d-%B-%Y")
+        Returns:
+            str: The corrected date in format DD-Month-YYYY
+        """
+        try:
+            # First try to parse with standard formats
+            parsed_date = self.parse_date(date_str)
+            if parsed_date:
+                return parsed_date.strftime("%d-%B-%Y")
+            
+            # If standard parsing fails, try custom parsing
+            date_str = re.sub(r"[-/,|;:.'\']", " ", date_str)
+            print(f'Date String: {date_str}')
+            
+            result = self.determine_day_and_year(date_str)
+            if result["is_valid"]:
+                return datetime(result["year"], 
+                              result["month"], 
+                              result["day"]).strftime("%d-%B-%Y")
+            elif result["valid_last_day"]:
+                return datetime(result["year"], 
+                              result["month"], 
+                              result["valid_last_day"]).strftime("%d-%B-%Y")
+            
+            # If both methods fail, try the parts-based approach
+            parts = date_str.split()
+            print(f'Parts: {parts}')
+            
+            if len(parts) != 3:
+                raise ValueError("Invalid date format")
+                
+            first = self.determine_length(date_str)
+            if first == 'year':
+                year, month, day = parts
+                is_valid, n_month = self.detect_month(month)
+                if not is_valid or not n_month:
+                    raise ValueError("Invalid month")
+                n_day, n_month, n_year = self.detect_day(day, n_month, year)
+            elif first == 'day':
+                day, month, year = parts
+                is_valid, n_month = self.detect_month(month)
+                if not is_valid or not n_month:
+                    raise ValueError("Invalid month")
+                n_day, n_month, n_year = self.detect_day(day, n_month, year)
+            elif first == 'month':
+                month, day, year = parts
+                is_valid, n_month = self.detect_month(month)
+                if not is_valid or not n_month:
+                    raise ValueError("Invalid month")
+                n_day, n_month, n_year = self.detect_day(day, n_month, year)
+            else:
+                raise ValueError("Could not determine date format")
+                
+            if not all([n_day, n_month, n_year]):
+                raise ValueError("Invalid date components")
+                
+            return datetime(n_year, n_month, n_day).strftime("%d-%B-%Y")
+            
+        except Exception as e:
+            print(f"Error processing date: {str(e)}")
+            return "01-January-2000"  # Default fallback date
 
     def determine_length(self, date_str):
         mylist = date_str.split()
