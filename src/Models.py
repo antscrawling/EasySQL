@@ -9,6 +9,23 @@ from typing import List, Optional, Dict, Any, Union
 from pydantic import BaseModel, Field
 import pickle
 
+class Innvoice(BaseModel):
+    """Model for an invoice"""
+    Invoice_Number: str = Field(..., example="INV-001", description="Unique invoice number")
+    Date: str = Field(..., example="2024-03-24", description="Invoice date")
+    Customer: str = Field(..., example="John Doe", description="Customer name")
+    Amount: float = Field(..., gt=0, example=1500.00, description="Invoice amount")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "Invoice_Number": "INV-001",
+                "Date": "2024-03-24",
+                "Customer": "John Doe",
+                "Amount": 1500.00
+            }
+        }
+
 class TableConfig(BaseModel):
     """Configuration for a database table"""
     name: str
@@ -71,7 +88,7 @@ class Easysql(BaseModel):
         full_path = self.get_full_path(file_path)
         
         match dtype:
-            case 'db':
+            case 'db' | 'sql':
                 with sqlite3.connect(full_path) as conn:
                     if isinstance(data, pd.DataFrame):
                         data.to_sql(self.table_config.name, conn, if_exists='replace', index=False)
@@ -84,7 +101,7 @@ class Easysql(BaseModel):
                     pd.DataFrame(data).to_csv(full_path, index=False)
             case 'json':
                 with open(full_path, 'w') as f:
-                    json.dump(data, file, indent=4)
+                    json.dump(data, file_path, indent=4)
             case 'pickle':
                 with open(full_path, 'wb') as f:
                     pickle.dump(data, f)
@@ -331,7 +348,7 @@ def main():
     )
     
     easy_sql = Easysql(table_config=config)
-    
+    print(easy_sql.table_config)
     # Create sample DataFrame
     df = pd.DataFrame({
         'id': [1, 2, 3],
@@ -344,9 +361,18 @@ def main():
     with sqlite3.connect(db_path) as conn:
         df.to_sql('transactions', conn, if_exists='replace', index=False)
     
-    # Load and display the data
-    mydf= easy_sql.load_file('transactions.db','db')
-    print(mydf)
+   # # Load and display the data
+   # mydf= easy_sql.load_file('transactions.db','db')
+   # print(mydf)
+   # 
+   # mydatadf = easy_sql.load_file('invoice_data.csv','csv')
+   # easy_sql.save_file('invoice_data.db',mydatadf,'db')
+    
+    myschema = easy_sql.get_the_sql_db_schema('invoice_data.db')
+    pprint(f'Schema: {myschema}, and type {type(myschema)}')
+    #easy_sql.save_file('invoice_schema.json',myschema,'json')
+    easy_sql.DataFrame(myschema).to_sql('invoice_schema', conn, if_exists='replace', index=False)
+    print(easy_sql.get_table_names_and_column_names('invoice_data.db'))
 
 if __name__ == "__main__":
     main()
