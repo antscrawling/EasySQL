@@ -2,7 +2,7 @@ import unittest
 import os
 import pandas as pd
 import sqlite3
-from Models import Easysql, TableConfig, Innvoice
+from ..src.Models import Easysql, TableConfig, Innvoice
 
 class TestEasysql(unittest.TestCase):
     """Test cases for the Easysql class"""

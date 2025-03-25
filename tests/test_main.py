@@ -1,8 +1,8 @@
 import unittest
 import os
 import pandas as pd
-from main import main
-from Models import Easysql, TableConfig
+from ..src.main import main
+from ..src.main import Easysql, TableConfig
 
 class TestMain(unittest.TestCase):
     """Test cases for the main script"""

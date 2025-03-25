@@ -1,5 +1,5 @@
 import unittest
-from models import Invoice
+from ..src.Models import Invoice
 from decimal import Decimal
 from datetime import date
 
