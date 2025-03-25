@@ -10,6 +10,9 @@ from pydantic import BaseModel, Field, field_validator
 from datetime import date
 from decimal import Decimal
 import pickle
+from typing import Set, ClassVar
+from logger_config import setup_logger
+import logging
 
 class Invoice(BaseModel):
     """Model for an invoice with all fields from the CSV data"""
@@ -78,7 +81,7 @@ class Invoice(BaseModel):
     )
 
     # Class variables for validation
-    allowed_currencies: ClassVar[set[str]] = {"USD", "EUR", "GBP"}
+    allowed_currencies: ClassVar[Set[str]] = {"USD", "EUR", "GBP"}
 
     @field_validator('currency')
     def validate_currency(cls, v: str) -> str:
@@ -136,6 +139,7 @@ class Easysql(BaseModel):
     table_config: TableConfig
     base_dir: str = Field(default=os.path.dirname(__file__))
     data_dir: str = Field(default=os.path.join(os.path.dirname(__file__), 'datafiles'))
+    logger: ClassVar[logging.Logger] = setup_logger()
 
     class Config:
         arbitrary_types_allowed = True
@@ -226,28 +230,23 @@ class Easysql(BaseModel):
         Returns:
             Any - The loaded data
         """
-        if dtype is None:
-            # Try to determine type from file extension
-            _, ext = os.path.splitext(file_path)
-            dtype = ext[1:]  # Remove the dot
+        self.logger.info(f"Loading file: {file_path} with type: {dtype}")
+        try:
+            if dtype is None:
+                # Try to determine type from file extension
+                _, ext = os.path.splitext(file_path)
+                dtype = ext[1:]  # Remove the dot
+                self.logger.debug(f"Detected file type: {dtype}")
             
-        full_path = os.path.join(self.data_dir, file_path)
-        
-        match dtype:
-            case 'json':
-                with open(full_path, 'r') as f:
-                    return json.load(f)
-            case 'csv':
-                return pd.read_csv(full_path)
-            case 'db':
-                table_name = self.list_tables(file_path)[0]
-                with sqlite3.connect(full_path) as conn:
-                    return pd.read_sql(f"SELECT * FROM {table_name}", conn)
-            case 'pickle':
-                with open(full_path, 'rb') as f:
-                    return pickle.load(f)
-            case _:
-                raise ValueError(f"Unsupported file type: {dtype}")
+            full_path = os.path.join(self.data_dir, file_path)
+            self.logger.debug(f"Full path: {full_path}")
+            
+            result = self.run_loading_file(full_path, dtype)
+            self.logger.info(f"Successfully loaded file: {file_path}")
+            return result
+        except Exception as e:
+            self.logger.error(f"Error loading file {file_path}: {str(e)}", exc_info=True)
+            raise
 
     def read_csv(self, file_path: str) -> pd.DataFrame:
         """
@@ -439,41 +438,41 @@ class Easysql(BaseModel):
         return self.merge_list_to_dict(table_names, column_names)
 
 def main():
-    config = TableConfig(
-        name="transactions",
-        columns=["id", "date", "amount"],
-        primary_key="id"
-    )
+    logger = setup_logger()
+    logger.info("Starting EasySQL application")
     
-    easy_sql = Easysql(table_config=config)
-    print(easy_sql.table_config)
-    # Create sample DataFrame
-    df = pd.DataFrame({
-        'id': [1, 2, 3],
-        'date': ['2021-01-01', '2021-01-02', '2021-01-03'],
-        'amount': [100, 200, 300]
-    })
-    
-    # Save DataFrame to SQLite database
-    db_path = easy_sql.get_full_path('transactions.db')
-    with sqlite3.connect(db_path) as conn:
-        df.to_sql('transactions', conn, if_exists='replace', index=False)
-    
-   # # Load and display the data
-    mydf= easy_sql.load_file('invoice_data.db','db')
-    print(mydf)
-    easy_sql.save_file('data.db',mydf,'db')
-    column = easy_sql.list_columns('data.db','transactions')
-    easy_sql.get_table_names_and_column_names('data.db')
-    print(easy_sql.inquire_database('invoice.db','*', 'mystats'))
-   # mydatadf = easy_sql.load_file('invoice_data.csv','csv')
-   # easy_sql.save_file('invoice_data.db',mydatadf,'db')
-    
-  
-  
-  
-  
-  
+    try:
+        config = TableConfig(
+            name="transactions",
+            columns=["id", "date", "amount"],
+            primary_key="id"
+        )
+        logger.info(f"Created TableConfig: {config}")
+        
+        easy_sql = Easysql(table_config=config)
+        logger.info("Initialized Easysql instance")
+        
+        # Create sample DataFrame
+        df = pd.DataFrame({
+            'id': [1, 2, 3],
+            'date': ['2021-01-01', '2021-01-02', '2021-01-03'],
+            'amount': [100, 200, 300]
+        })
+        logger.info(f"Created sample DataFrame:\n{df}")
+        
+        # Save DataFrame to SQLite database
+        db_path = easy_sql.get_full_path('transactions.db')
+        with sqlite3.connect(db_path) as conn:
+            df.to_sql('transactions', conn, if_exists='replace', index=False)
+        logger.info(f"Saved DataFrame to {db_path}")
+        
+        # Load and display the data
+        mydf = easy_sql.load_file('invoice_data.db', 'db')
+        logger.info(f"Loaded invoice data:\n{mydf}")
+        
+    except Exception as e:
+        logger.error("Error in main execution", exc_info=True)
+        raise
 
 if __name__ == "__main__":
     main()
