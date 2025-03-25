@@ -362,17 +362,20 @@ def main():
         df.to_sql('transactions', conn, if_exists='replace', index=False)
     
    # # Load and display the data
-   # mydf= easy_sql.load_file('transactions.db','db')
-   # print(mydf)
-   # 
+    mydf= easy_sql.load_file('invoice_data.db','db')
+    print(mydf)
+    easy_sql.save_file('data.db',mydf,'db')
+    column = easy_sql.list_columns('data.db','transactions')
+    easy_sql.get_table_names_and_column_names('data.db')
+    print(easy_sql.inquire_database('invoice.db','*', 'mystats'))
    # mydatadf = easy_sql.load_file('invoice_data.csv','csv')
    # easy_sql.save_file('invoice_data.db',mydatadf,'db')
     
-    myschema = easy_sql.get_the_sql_db_schema('invoice_data.db')
-    pprint(f'Schema: {myschema}, and type {type(myschema)}')
-    #easy_sql.save_file('invoice_schema.json',myschema,'json')
-    easy_sql.DataFrame(myschema).to_sql('invoice_schema', conn, if_exists='replace', index=False)
-    print(easy_sql.get_table_names_and_column_names('invoice_data.db'))
+  
+  
+  
+  
+  
 
 if __name__ == "__main__":
     main()
