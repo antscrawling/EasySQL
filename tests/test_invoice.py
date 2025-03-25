@@ -1,5 +1,6 @@
 import unittest
-from Models import Innvoice
+from Models import Invoice
+from decimal import Decimal
 from datetime import date
 
 class TestInvoice(unittest.TestCase):
@@ -7,32 +8,33 @@ class TestInvoice(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures"""
-        self.valid_invoice_data = {
-            "Invoice_Number": "INV-001",
-            "Date": "2024-03-24",
-            "Customer": "John Doe",
-            "Amount": 1500.00
+        self.valid_data = {
+            "invoice_number": "INV1000",
+            "customer_id": 47355,
+            "product_id": 1392,
+            "unit_cost": Decimal("157.09"),
+            "quantity_bought": 8,
+            "total_amount": Decimal("1256.72"),
+            "currency": "USD",
+            "date": "2024-12-17",
+            "store_number": 1,
+            "employee_name": "Alice",
+            "discount": Decimal("1.74"),
+            "net_amount": Decimal("1254.98")
         }
 
-    def test_valid_invoice_creation(self):
+    def test_valid_invoice(self):
         """Test creating a valid invoice"""
-        invoice = Innvoice(**self.valid_invoice_data)
-        self.assertEqual(invoice.Invoice_Number, "INV-001")
-        self.assertEqual(invoice.Amount, 1500.00)
+        invoice = Invoice(**self.valid_data)
+        self.assertEqual(invoice.invoice_number, "INV1000")
+        self.assertEqual(invoice.net_amount, Decimal("1254.98"))
 
-    def test_invalid_amount(self):
-        """Test invoice with invalid amount"""
-        invalid_data = self.valid_invoice_data.copy()
-        invalid_data["Amount"] = -100
+    def test_invalid_currency(self):
+        """Test invoice with invalid currency"""
+        invalid_data = self.valid_data.copy()
+        invalid_data["currency"] = "JPY"
         with self.assertRaises(ValueError):
-            Innvoice(**invalid_data)
-
-    def test_invoice_schema(self):
-        """Test invoice schema example"""
-        invoice = Innvoice(**self.valid_invoice_data)
-        schema = invoice.schema()
-        self.assertIn("example", schema["example"])
-        self.assertEqual(schema["example"]["Invoice_Number"], "INV-001")
+            Invoice(**invalid_data)
 
 if __name__ == '__main__':
     unittest.main()

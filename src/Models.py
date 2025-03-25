@@ -6,25 +6,123 @@ import re
 from collections import ChainMap
 from pprint import pprint
 from typing import List, Optional, Dict, Any, Union
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from datetime import date
+from decimal import Decimal
 import pickle
 
-class Innvoice(BaseModel):
-    """Model for an invoice"""
-    Invoice_Number: str = Field(..., example="INV-001", description="Unique invoice number")
-    Date: str = Field(..., example="2024-03-24", description="Invoice date")
-    Customer: str = Field(..., example="John Doe", description="Customer name")
-    Amount: float = Field(..., gt=0, example=1500.00, description="Invoice amount")
+class Invoice(BaseModel):
+    """Model for an invoice with all fields from the CSV data"""
+    invoice_number: str = Field(
+        ..., 
+        example="INV1000", 
+        description="Unique invoice identifier"
+    )
+    customer_id: int = Field(
+        ..., 
+        example=47355, 
+        description="Customer identifier"
+    )
+    product_id: int = Field(
+        ..., 
+        example=1392, 
+        description="Product identifier"
+    )
+    unit_cost: Decimal = Field(
+        ..., 
+        example="157.09", 
+        description="Cost per unit"
+    )
+    quantity_bought: int = Field(
+        ..., 
+        gt=0, 
+        example=8, 
+        description="Quantity purchased"
+    )
+    total_amount: Decimal = Field(
+        ..., 
+        example="1256.72", 
+        description="Total amount before discount"
+    )
+    currency: str = Field(
+        ..., 
+        example="USD", 
+        description="Transaction currency"
+    )
+    invoice_date: date = Field(
+        ..., 
+        example="2024-12-17", 
+        description="Invoice date"
+    )
+    store_number: int = Field(
+        ..., 
+        gt=0, 
+        example=1, 
+        description="Store identifier"
+    )
+    employee_name: str = Field(
+        ..., 
+        example="Alice", 
+        description="Employee name"
+    )
+    discount: Decimal = Field(
+        ..., 
+        ge=0, 
+        example="1.74", 
+        description="Discount amount"
+    )
+    net_amount: Decimal = Field(
+        ..., 
+        example="1254.98", 
+        description="Final amount after discount"
+    )
 
-    class Config:
-        schema_extra = {
+    # Class variables for validation
+    allowed_currencies: ClassVar[set[str]] = {"USD", "EUR", "GBP"}
+
+    @field_validator('currency')
+    def validate_currency(cls, v: str) -> str:
+        """Validate currency is one of USD, EUR, or GBP"""
+        if v not in cls.allowed_currencies:
+            raise ValueError(f'Currency must be one of {cls.allowed_currencies}')
+        return v
+
+    @field_validator('total_amount')
+    def validate_total_amount(cls, v: Decimal, values: dict) -> Decimal:
+        """Validate total amount matches unit_cost * quantity"""
+        if 'unit_cost' in values.data and 'quantity_bought' in values.data:
+            expected = values.data['unit_cost'] * values.data['quantity_bought']
+            if abs(v - expected) > Decimal('0.01'):
+                raise ValueError('Total amount must equal unit_cost * quantity_bought')
+        return v
+
+    @field_validator('net_amount')
+    def validate_net_amount(cls, v: Decimal, values: dict) -> Decimal:
+        """Validate net amount matches total_amount - discount"""
+        if 'total_amount' in values.data and 'discount' in values.data:
+            expected = values.data['total_amount'] - values.data['discount']
+            if abs(v - expected) > Decimal('0.01'):
+                raise ValueError('Net amount must equal total_amount - discount')
+        return v
+
+    model_config = {
+        "json_schema_extra": {
             "example": {
-                "Invoice_Number": "INV-001",
-                "Date": "2024-03-24",
-                "Customer": "John Doe",
-                "Amount": 1500.00
+                "invoice_number": "INV1000",
+                "customer_id": 47355,
+                "product_id": 1392,
+                "unit_cost": "157.09",
+                "quantity_bought": 8,
+                "total_amount": "1256.72",
+                "currency": "USD",
+                "invoice_date": "2024-12-17",
+                "store_number": 1,
+                "employee_name": "Alice",
+                "discount": "1.74",
+                "net_amount": "1254.98"
             }
         }
+    }
 
 class TableConfig(BaseModel):
     """Configuration for a database table"""
